@@ -13,4 +13,4 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.4.3"
-rusb = "0.8.1"
+rusb = "0.9.1"
