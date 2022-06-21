@@ -96,9 +96,9 @@ impl USB488Capabilities {
       return Err(ClassError::InvalidCapabilities);
     }
 
-    if usb488_capabilities.usb488_2 && !usb488_capabilities.sr {
-      return Err(ClassError::InvalidCapabilities);
-    }
+    //if usb488_capabilities.usb488_2 && !usb488_capabilities.sr {
+     // return Err(ClassError::InvalidCapabilities);
+    //}
 
     if usb488_capabilities.scpi && !usb488_capabilities.usb488_2 {
       return Err(ClassError::InvalidCapabilities);
