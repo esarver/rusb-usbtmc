@@ -53,97 +53,103 @@ impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
   }
 }
 
-fn is_usbtmc_device<Ctx: rusb::UsbContext>(
-  device: rusb::Device<Ctx>,
-) -> TMCResult<Option<Instrument<Ctx>>> {
-  let device_desc = device.device_descriptor()?;
+impl Instrument<Ctx> {
+  pub fn new(device: rusb::Device<Ctx>) -> TMCResult<Option<Instrument<Ctx>>> {
+    let device_desc = device.device_descriptor()?;
 
-  for cfg_id in 0..device_desc.num_configurations() {
-    let config_desc = match device.config_descriptor(cfg_id) {
-      Err(_) => continue,
-      Ok(desc) => desc,
-    };
+    for cfg_id in 0..device_desc.num_configurations() {
+      let config_desc = match device.config_descriptor(cfg_id) {
+        Err(_) => continue,
+        Ok(desc) => desc,
+      };
 
-    let mut found_interface: Option<TMCInterface> = None;
-    for interface in config_desc.interfaces() {
-      for interface_desc in interface.descriptors() {
-        if interface_desc.class_code() == 0xFE && interface_desc.sub_class_code() == 3 {
-          let mut control_in_max_packet_size: u16 = 0;
-          let mut bulk_in_max_packet_size: u16 = 0;
-          let mut bulk_in_address: Option<u8> = None;
-          let mut bulk_out_max_packet_size: u16 = 0;
-          let mut bulk_out_address: Option<u8> = None;
-          let mut interrupt_in_address: Option<u8> = None;
+      let mut found_interface: Option<TMCInterface> = None;
+      for interface in config_desc.interfaces() {
+        for interface_desc in interface.descriptors() {
+          if interface_desc.class_code() == 0xFE && interface_desc.sub_class_code() == 3 {
+            let mut control_in_max_packet_size: u16 = 0;
+            let mut bulk_in_max_packet_size: u16 = 0;
+            let mut bulk_in_address: Option<u8> = None;
+            let mut bulk_out_max_packet_size: u16 = 0;
+            let mut bulk_out_address: Option<u8> = None;
+            let mut interrupt_in_address: Option<u8> = None;
 
-          for ep_desc in interface_desc.endpoint_descriptors() {
-            use rusb::Direction::*;
-            use rusb::TransferType::*;
+            for ep_desc in interface_desc.endpoint_descriptors() {
+              use rusb::Direction::*;
+              use rusb::TransferType::*;
 
-            match (ep_desc.transfer_type(), ep_desc.direction()) {
-              (Control, In) => {
-                control_in_max_packet_size = ep_desc.max_packet_size();
-              }
-              (Bulk, In) => {
-                bulk_in_address = Some(ep_desc.address());
-                bulk_in_max_packet_size = ep_desc.max_packet_size();
-              }
-              (Bulk, Out) => {
-                bulk_out_address = Some(ep_desc.address());
-                bulk_out_max_packet_size = ep_desc.max_packet_size();
-              }
-              (Interrupt, In) => {
-                interrupt_in_address = Some(ep_desc.address());
-              }
-              (_, _) => {
-                // ignore extra endpoints
+              match (ep_desc.transfer_type(), ep_desc.direction()) {
+                (Control, In) => {
+                  control_in_max_packet_size = ep_desc.max_packet_size();
+                }
+                (Bulk, In) => {
+                  bulk_in_address = Some(ep_desc.address());
+                  bulk_in_max_packet_size = ep_desc.max_packet_size();
+                }
+                (Bulk, Out) => {
+                  bulk_out_address = Some(ep_desc.address());
+                  bulk_out_max_packet_size = ep_desc.max_packet_size();
+                }
+                (Interrupt, In) => {
+                  interrupt_in_address = Some(ep_desc.address());
+                }
+                (_, _) => {
+                  // ignore extra endpoints
+                }
               }
             }
-          }
 
-          if let (Some(bulk_in_address), Some(bulk_out_address)) =
-            (bulk_in_address, bulk_out_address)
-          {
-            found_interface = Some(TMCInterface {
-              interface_number: interface_desc.interface_number(),
-              interface_protocol: interface_desc.protocol_code(),
-              control_in_max_packet_size,
-              bulk_in_address,
-              bulk_in_max_packet_size,
-              bulk_out_address,
-              bulk_out_max_packet_size,
-              interrupt_in_address,
-            });
+            if let (Some(bulk_in_address), Some(bulk_out_address)) =
+              (bulk_in_address, bulk_out_address)
+            {
+              found_interface = Some(TMCInterface {
+                interface_number: interface_desc.interface_number(),
+                interface_protocol: interface_desc.protocol_code(),
+                control_in_max_packet_size,
+                bulk_in_address,
+                bulk_in_max_packet_size,
+                bulk_out_address,
+                bulk_out_max_packet_size,
+                interrupt_in_address,
+              });
 
-            break;
+              break;
+            }
           }
+        }
+
+        if found_interface.is_some() {
+          break;
         }
       }
 
-      if found_interface.is_some() {
-        break;
+      if let Some(endpoints) = found_interface {
+        let mut instrument = Instrument {
+          device,
+          device_desc,
+          config_desc,
+          endpoints,
+
+          serial_number_loaded: false,
+          serial_number: None,
+        };
+
+        // Try to read the serial number; this will attempt to connect, but we don't mind
+        // if it fails.
+        let _ = instrument.read_serial_number();
+
+        return Ok(Some(instrument));
       }
     }
 
-    if let Some(endpoints) = found_interface {
-      let mut instrument = Instrument {
-        device,
-        device_desc,
-        config_desc,
-        endpoints,
-
-        serial_number_loaded: false,
-        serial_number: None,
-      };
-
-      // Try to read the serial number; this will attempt to connect, but we don't mind
-      // if it fails.
-      let _ = instrument.read_serial_number();
-
-      return Ok(Some(instrument));
-    }
+    Ok(None)
   }
+}
 
-  Ok(None)
+fn is_usbtmc_device<Ctx: rusb::UsbContext>(
+  device: rusb::Device<Ctx>,
+) -> TMCResult<Option<Instrument<Ctx>>> {
+  Instrument::new(device)
 }
 
 /// List detected USBTMC devices
