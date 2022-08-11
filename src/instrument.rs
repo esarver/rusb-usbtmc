@@ -39,7 +39,7 @@ impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
     match self.read_serial_number()? {
       None => Ok(format!("USB::{}::{}::INSTR", vendor_id, product_id)),
       Some(serial_number) => Ok(format!(
-        "USB::{}::{}::{}::INSTR",
+        "USB::{:X}::{:X}::{}::INSTR",
         vendor_id, product_id, serial_number
       )),
     }
