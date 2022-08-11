@@ -53,7 +53,7 @@ impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
   }
 }
 
-impl Instrument<Ctx> {
+impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
   pub fn new(device: rusb::Device<Ctx>) -> TMCResult<Option<Instrument<Ctx>>> {
     let device_desc = device.device_descriptor()?;
 
