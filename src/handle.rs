@@ -252,7 +252,11 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
   }
 
   /// Read response data from the instrument
-  pub fn read_raw(&mut self, transfer_size: Option<u32>) -> TMCResult<Vec<u8>> {
+  pub fn read_raw(
+    &mut self,
+    transfer_size: Option<u32>,
+    timeout: Option<Duration>,
+  ) -> TMCResult<Vec<u8>> {
     let transfer_size = match transfer_size {
       Some(size) if size < self.max_transfer_size => size,
       _ => self.max_transfer_size,
@@ -260,6 +264,20 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
 
     let mut read_data = Vec::with_capacity(HEADER_SIZE + transfer_size as usize + 3);
     let mut buf = Vec::new();
+
+    let time = std::time::Instant::now();
+    let end_time = time + timeout.unwrap_or(Duration::from_millis(1000));
+    while std::time::Instant::now() < end_time {
+      let mut status_buf: Vec<u8> = Vec::new();
+      self.read_control(ControlRequest::CheckClearStatus, 1, &mut status_buf)?;
+
+      //eprintln!("{status_buf:?}");
+
+      if (*status_buf.first().unwrap_or(&0) & 16) == 16 {
+        break;
+      }
+      sleep(Duration::from_millis(100));
+    }
 
     loop {
       // Send OUT command header to request device send data
@@ -294,7 +312,7 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
 
   /// Read UTF-8 response data from the instrument
   pub fn read(&mut self, transfer_size: Option<u32>) -> TMCResult<String> {
-    let read_data = self.read_raw(transfer_size)?;
+    let read_data = self.read_raw(transfer_size, None)?;
     Ok(String::from_utf8(read_data)?)
   }
 
@@ -313,7 +331,7 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
   /// Write a command message to the instrument and read a response
   pub fn ask_raw(&mut self, data: &[u8]) -> TMCResult<Vec<u8>> {
     self.write_raw(data)?;
-    self.read_raw(None)
+    self.read_raw(None, None)
   }
 
   // TODO: support for vendor-specific bulk transfers
