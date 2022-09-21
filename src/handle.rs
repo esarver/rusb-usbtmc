@@ -152,26 +152,22 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
     out.resize(read_size, 0);
     self.incr_b_tag();
     let size = match request {
-        ControlRequest::Tmc488_ReadStatusByte => {
-            self.usb.read_control(
-                request_type,
-                request as u8,
-                self.b_tag as u16,
-                self.instrument.endpoints.interface_number as u16,
-                out,
-                self.timeout,
-            )?
-        },
-        _ => {
-            self.usb.read_control(
-                request_type,
-                request as u8,
-                self.b_tag as u16,
-                self.instrument.endpoints.interface_number as u16,
-                out,
-                self.timeout,
-            )?
-        },
+      ControlRequest::Tmc488_ReadStatusByte => self.usb.read_control(
+        request_type,
+        request as u8,
+        self.b_tag as u16,
+        self.instrument.endpoints.interface_number as u16,
+        out,
+        self.timeout,
+      )?,
+      _ => self.usb.read_control(
+        request_type,
+        request as u8,
+        self.b_tag as u16,
+        self.instrument.endpoints.interface_number as u16,
+        out,
+        self.timeout,
+      )?,
     };
     println!("Req: [{:?}], Out: [{:?}]", request, &out);
     // self.usb.read_control(
@@ -249,7 +245,11 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
 
   fn incr_b_tag(&mut self) {
     // bTag must be different on each successive bulk-out transfer and not 0
-    self.b_tag = if self.b_tag > 127 || self.b_tag < 2 { 2 } else { self.b_tag + 1 };
+    self.b_tag = if self.b_tag > 127 || self.b_tag < 2 {
+      2
+    } else {
+      self.b_tag + 1
+    };
   }
 
   /// Write a command message to the instrument
@@ -293,27 +293,31 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
     let end_time = time + timeout.unwrap_or(Duration::from_millis(1000));
 
     let mut message_available = false;
-    while std::time::Instant::now() < end_time && !message_available{
+    while std::time::Instant::now() < end_time && !message_available {
       let mut status_buf: Vec<u8> = Vec::with_capacity(3);
       self.read_control(ControlRequest::Tmc488_ReadStatusByte, 3, &mut status_buf)?;
 
       //println!("&status_buf = {:?}", &status_buf);
-      if !ControlRequest::check_response_status(&status_buf).is_err(){
-        let mut buf = &mut [0u8,2];
-        let interrupt = self.usb.read_interrupt(self.instrument.endpoints.interrupt_in_address.unwrap_or(0), buf, Duration::from_millis(10))?;
+      if !ControlRequest::check_response_status(&status_buf).is_err() {
+        let mut buf = &mut [0u8, 2];
+        let interrupt = self.usb.read_interrupt(
+          self.instrument.endpoints.interrupt_in_address.unwrap_or(0),
+          buf,
+          Duration::from_millis(10),
+        )?;
 
         println!("Interrupt: [{buf:?}]");
 
-        if(*buf.last().unwrap_or(&0) == 16) {
-            message_available = true;
+        if (*buf.last().unwrap_or(&0) == 16) {
+          message_available = true;
         }
       }
       self.clear()?;
       sleep(Duration::from_millis(100));
     }
-    
+
     if !message_available {
-        return Ok(Vec::new());
+      return Ok(Vec::new());
     }
 
     loop {
