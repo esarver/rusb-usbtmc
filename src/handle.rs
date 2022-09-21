@@ -67,21 +67,23 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
 
     let old_config = usb.active_configuration()?;
 
-    for config in 0..handle
-      .instrument
-      .device
-      .device_descriptor()?
-      .num_configurations()
-    {
-      for interface in 0..handle
+    if rusb::supports_detach_kernel_driver() {
+      for config in 0..handle
         .instrument
         .device
-        .config_descriptor(config)?
-        .num_interfaces()
+        .device_descriptor()?
+        .num_configurations()
       {
-        if usb.kernel_driver_active(interface)? {
-          handle.reattach_kernel_driver.push(interface);
-          usb.detach_kernel_driver(interface)?;
+        for interface in 0..handle
+          .instrument
+          .device
+          .config_descriptor(config)?
+          .num_interfaces()
+        {
+          if usb.kernel_driver_active(interface)? {
+            handle.reattach_kernel_driver.push(interface);
+            usb.detach_kernel_driver(interface)?;
+          }
         }
       }
     }
