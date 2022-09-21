@@ -12,6 +12,10 @@ pub enum ControlRequest {
   CheckClearStatus = 6,
   GetCapabilities = 7,
   IndicatorPulse = 64,
+  Tmc488_ReadStatusByte = 128,
+  Tmc488_RenControl = 160,
+  Tmc488_GotoLocal = 161,
+  Tmc488_LocalLockout = 162,
 }
 
 impl From<ControlRequest> for u8 {
