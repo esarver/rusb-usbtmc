@@ -184,7 +184,6 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
         self.timeout,
       )?,
     };
-    println!("Req: [{:?}], Out: [{:?}]", request, &out);
     // self.usb.read_control(
     //   request_type,
     //   request as u8,
@@ -312,18 +311,15 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
       let mut status_buf: Vec<u8> = Vec::with_capacity(3);
       self.read_control(ControlRequest::Tmc488_ReadStatusByte, 3, &mut status_buf)?;
 
-      //println!("&status_buf = {:?}", &status_buf);
       if !ControlRequest::check_response_status(&status_buf).is_err() {
-        let mut buf = &mut [0u8, 2];
-        let interrupt = self.usb.read_interrupt(
+        let buf = &mut [0u8, 2];
+        let _interrupt = self.usb.read_interrupt(
           self.instrument.endpoints.interrupt_in_address.unwrap_or(0),
           buf,
           Duration::from_millis(10),
         )?;
 
-        println!("Interrupt: [{buf:?}]");
-
-        if (*buf.last().unwrap_or(&0) & 16 != 0) {
+        if *buf.last().unwrap_or(&0) & 16 != 0 {
           message_available = true;
         }
       }
