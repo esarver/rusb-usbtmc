@@ -67,18 +67,30 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
 
     let old_config = usb.active_configuration()?;
 
+    for config in 0..handle
+      .instrument
+      .device
+      .device_descriptor()?
+      .num_configurations()
+    {
+      for interface in 0..handle
+        .instrument
+        .device
+        .config_descriptor(config)?
+        .num_interfaces()
+      {
+        if usb.kernel_driver_active(interface)? {
+          handle.reattach_kernel_driver.push(interface);
+          usb.detach_kernel_driver(interface)?;
+        }
+      }
+    }
+
     if old_config != 0 {
       match handle.instrument.device.config_descriptor(old_config) {
         Err(rusb::Error::NotFound) => {}
         Err(rusb_error) => return Err(rusb_error.into()),
-        Ok(old_config_desc) => {
-          for interface in 0..old_config_desc.num_interfaces() {
-            if usb.kernel_driver_active(interface)? {
-              handle.reattach_kernel_driver.push(interface);
-              usb.detach_kernel_driver(interface)?;
-            }
-          }
-        }
+        Ok(_old_config_desc) => {}
       };
     }
 
@@ -90,6 +102,7 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
 
     usb.claim_interface(endpoints.interface_number)?;
 
+    //TODO should this clear be here?
     handle.clear()?;
     handle.get_capabilities()?;
 
@@ -308,11 +321,10 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
 
         println!("Interrupt: [{buf:?}]");
 
-        if (*buf.last().unwrap_or(&0) == 16) {
+        if (*buf.last().unwrap_or(&0) & 16 != 0) {
           message_available = true;
         }
       }
-      self.clear()?;
       sleep(Duration::from_millis(100));
     }
 
