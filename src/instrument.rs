@@ -1,3 +1,5 @@
+use rusb::Version;
+
 use crate::class::*;
 use crate::{InstrumentHandle, TMCResult};
 
@@ -13,11 +15,40 @@ pub struct Instrument<Ctx: rusb::UsbContext> {
     pub config_desc: rusb::ConfigDescriptor,
     pub endpoints: TMCInterface,
 
+    manufacturer_string: Option<String>,
+    product_string: Option<String>,
+    device_version: Option<Version>,
     serial_number_loaded: bool,
     serial_number: Option<String>,
 }
 
 impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
+    pub fn read_manufacturer_string(&mut self) -> TMCResult<Option<String>> {
+        if self.manufacturer_string.is_none() {
+            self.manufacturer_string = match self.device_desc.manufacturer_string_index() {
+                None => None,
+                Some(index) => Some(self.device.open()?.read_string_descriptor_ascii(index)?),
+            };
+        }
+        Ok(self.manufacturer_string.clone())
+    }
+    pub fn read_product_string(&mut self) -> TMCResult<Option<String>> {
+        if self.product_string.is_none() {
+            self.product_string = match self.device_desc.product_string_index() {
+                None => None,
+                Some(index) => Some(self.device.open()?.read_string_descriptor_ascii(index)?),
+            };
+        }
+        Ok(self.product_string.clone())
+    }
+
+    pub fn read_device_version(&mut self) -> TMCResult<Option<Version>> {
+        if self.device_version.is_none() {
+            self.device_version = Some(self.device_desc.device_version());
+        }
+        Ok(self.device_version)
+    }
+
     pub fn read_serial_number(&mut self) -> TMCResult<Option<String>> {
         if !self.serial_number_loaded {
             self.serial_number = match self.device_desc.serial_number_string_index() {
@@ -131,6 +162,9 @@ impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
 
                     serial_number_loaded: false,
                     serial_number: None,
+                    manufacturer_string: None,
+                    product_string: None,
+                    device_version: None,
                 };
 
                 // Try to read the serial number; this will attempt to connect, but we don't mind
