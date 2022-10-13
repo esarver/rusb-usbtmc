@@ -289,35 +289,23 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
     }
 
     /// Read status byte from instrument
-    pub fn read_stb(&mut self, timeout: Option<Duration>) -> TMCResult<bool> {
-        let time = std::time::Instant::now();
-        let end_time = time + timeout.unwrap_or(Duration::from_millis(1000));
-        let mut message_available = false;
+    pub fn read_stb(&mut self, _timeout: Option<Duration>) -> TMCResult<bool> {
+        let mut status_buf: Vec<u8> = Vec::with_capacity(3);
+        self.read_control(ControlRequest::Tmc488ReadStatusByte, 3, &mut status_buf)?;
 
-        while std::time::Instant::now() < end_time && !message_available {
-            let mut status_buf: Vec<u8> = Vec::with_capacity(3);
-            self.read_control(ControlRequest::Tmc488ReadStatusByte, 3, &mut status_buf)?;
+        if ControlRequest::check_response_status(&status_buf).is_ok() {
+            let buf = &mut [0u8, 2];
+            let _interrupt = self.usb.read_interrupt(
+                self.instrument.endpoints.interrupt_in_address.unwrap_or(0),
+                buf,
+                Duration::from_micros(1),
+            )?;
 
-            if ControlRequest::check_response_status(&status_buf).is_ok() {
-                let buf = &mut [0u8, 2];
-                let _interrupt = self.usb.read_interrupt(
-                    self.instrument.endpoints.interrupt_in_address.unwrap_or(0),
-                    buf,
-                    Duration::from_millis(10),
-                )?;
-
-                if *buf.last().unwrap_or(&0) & 16 != 0 {
-                    message_available = true;
-                }
+            if *buf.last().unwrap_or(&0) & 16 != 0 {
+                return Ok(true);
             }
-            sleep(Duration::from_millis(100));
         }
-
-        if !message_available {
-            Ok(false)
-        } else {
-            Ok(true)
-        }
+        return Ok(false);
     }
 
     /// Read response data from the instrument
