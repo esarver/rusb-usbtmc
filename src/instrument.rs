@@ -27,7 +27,13 @@ impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
         if self.manufacturer_string.is_none() {
             self.manufacturer_string = match self.device_desc.manufacturer_string_index() {
                 None => None,
-                Some(index) => Some(self.device.open()?.read_string_descriptor_ascii(index)?),
+                Some(index) => Some(
+                    self.device
+                        .open()?
+                        .read_string_descriptor_ascii(index)?
+                        .trim_end_matches(char::from(0))
+                        .to_string(),
+                ),
             };
         }
         Ok(self.manufacturer_string.clone())
@@ -36,7 +42,13 @@ impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
         if self.product_string.is_none() {
             self.product_string = match self.device_desc.product_string_index() {
                 None => None,
-                Some(index) => Some(self.device.open()?.read_string_descriptor_ascii(index)?),
+                Some(index) => Some(
+                    self.device
+                        .open()?
+                        .read_string_descriptor_ascii(index)?
+                        .trim_end_matches(char::from(0))
+                        .to_string(),
+                ),
             };
         }
         Ok(self.product_string.clone())
@@ -53,7 +65,13 @@ impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
         if !self.serial_number_loaded {
             self.serial_number = match self.device_desc.serial_number_string_index() {
                 None => None,
-                Some(index) => Some(self.device.open()?.read_string_descriptor_ascii(index)?),
+                Some(index) => Some(
+                    self.device
+                        .open()?
+                        .read_string_descriptor_ascii(index)?
+                        .trim_end_matches(char::from(0))
+                        .to_string(),
+                ),
             };
 
             self.serial_number_loaded = true;
