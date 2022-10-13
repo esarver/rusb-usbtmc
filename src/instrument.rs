@@ -18,7 +18,7 @@ pub struct Instrument<Ctx: rusb::UsbContext> {
 }
 
 impl<Ctx: rusb::UsbContext> Instrument<Ctx> {
-    fn read_serial_number(&mut self) -> TMCResult<Option<String>> {
+    pub fn read_serial_number(&mut self) -> TMCResult<Option<String>> {
         if !self.serial_number_loaded {
             self.serial_number = match self.device_desc.serial_number_string_index() {
                 None => None,
