@@ -305,7 +305,7 @@ impl<Ctx: UsbContext> InstrumentHandle<Ctx> {
                 return Ok(true);
             }
         }
-        return Ok(false);
+        Ok(false)
     }
 
     /// Read response data from the instrument
