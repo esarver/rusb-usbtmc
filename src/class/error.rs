@@ -1,24 +1,36 @@
 use crate::class::*;
 
-use std::fmt;
+use thiserror::Error;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ClassError {
+    #[error("illegal status")]
     IllegalStatus,
-    InvalidCapabilities,
-    InvalidMsgId,
-    InvalidTermChar,
-    TagCheckFailure,
-    TruncatedBulkOut,
-    TruncatedControlResponse,
-    TruncatedHeader,
-    UnexpectedStatus(Status),
-    UnsupportedFeature,
-}
 
-impl fmt::Display for ClassError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // TODO: better formatting probably
-        write!(f, "{:?}", self)
-    }
+    #[error("invalid capabilities")]
+    InvalidCapabilities,
+
+    #[error("invalid message ID")]
+    InvalidMsgId,
+
+    #[error("invalid terminal character")]
+    InvalidTermChar,
+
+    #[error("tag check failure")]
+    TagCheckFailure,
+
+    #[error("truncated bulk-out")]
+    TruncatedBulkOut,
+
+    #[error("truncated control response")]
+    TruncatedControlResponse,
+
+    #[error("truncated header")]
+    TruncatedHeader,
+
+    #[error("unexpected status \"{0:?}\"")]
+    UnexpectedStatus(Status),
+
+    #[error("unsupported feature")]
+    UnsupportedFeature,
 }
