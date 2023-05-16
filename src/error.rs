@@ -1,5 +1,5 @@
 pub use crate::class::ClassError;
-use std::string::FromUtf8Error;
+use std::{io::ErrorKind, string::FromUtf8Error};
 
 use thiserror::Error;
 
@@ -28,3 +28,9 @@ pub enum TMCError {
 }
 
 pub type TMCResult<T> = Result<T, TMCError>;
+
+impl From<TMCError> for std::io::Error {
+    fn from(value: TMCError) -> Self {
+        std::io::Error::new(ErrorKind::Other, value.to_string())
+    }
+}
