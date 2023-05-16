@@ -6,6 +6,7 @@ use rusb::UsbContext;
 use std::str;
 use std::thread::sleep;
 
+#[derive(Debug)]
 pub struct InstrumentHandle<Ctx: UsbContext> {
     usb: DeviceHandle<Ctx>,
 
